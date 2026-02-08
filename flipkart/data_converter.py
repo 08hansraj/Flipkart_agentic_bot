@@ -36,11 +36,16 @@ class DataConverter:
             ]
         ]
 
-        docs = [
-            Document(
-                page_content=row["embedding_text"],
+        docs = []
+        for _, row in df.iterrows():
+            pid = self.clean_value(row["id"])
+            if pid is not None:
+                pid = str(pid).strip()
+
+            doc = Document(
+                page_content=str(row["embedding_text"]) if row["embedding_text"] is not None else "",
                 metadata={
-                    "id": self.clean_value(row["id"]),
+                    "id": pid,
                     "product_name": self.clean_value(row["product_name"]),
                     "brand": self.clean_value(row["brand"]),
                     "category_path": self.clean_value(row["category_path"]),
@@ -53,7 +58,6 @@ class DataConverter:
                     "is_FK_Advantage_product": self.clean_value(row["is_FK_Advantage_product"]),
                 },
             )
-            for _, row in df.iterrows()
-        ]
+            docs.append(doc)
 
         return docs
