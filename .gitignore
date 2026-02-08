@@ -36,3 +36,6 @@ logs/
 *.egg-info
 
 dd
+
+data/
+scripts/

@@ -1,0 +1,256 @@
+/* ================= Flipkart Dark Minimal Theme ================= */
+
+body, html {
+    height: 100%;
+    margin: 0;
+    background: #0b1220;
+    font-family: "Segoe UI", sans-serif;
+}
+
+.chat {
+    margin-top: 30px;
+    margin-bottom: 30px;
+}
+
+.card {
+    height: 90vh;
+    border-radius: 18px !important;
+    background: #0f172a !important;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.35);
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Header */
+.msg_head {
+    background: #2874F0;
+    color: white;
+    padding: 16px;
+    border: none;
+}
+
+.user_info span {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.user_info p {
+    margin: 0;
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+/* New Chat button */
+#newChatBtn {
+    border-radius: 10px;
+    font-weight: 700;
+    background: white;
+    color: #2874F0;
+    border: none;
+    padding: 7px 12px;
+    cursor: pointer;
+}
+
+#newChatBtn:hover {
+    background: #f1f3f6;
+}
+
+/* Chat Body */
+.msg_card_body {
+    padding: 18px;
+    overflow-y: auto;
+    background: #0b1220;
+}
+
+/* Footer */
+.card-footer {
+    border-top: 1px solid rgba(255,255,255,0.08);
+    background: #0f172a;
+    padding: 12px;
+}
+
+.type_msg {
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.12);
+    padding: 14px;
+    background: #0b1220;
+    color: white;
+}
+
+.type_msg::placeholder {
+    color: rgba(255,255,255,0.45);
+}
+
+.type_msg:focus {
+    outline: none;
+    box-shadow: none;
+    border: 1px solid #2874F0;
+}
+
+/* Send Button */
+.send_btn {
+    border-radius: 14px;
+    background: #ffc200;
+    border: none;
+    color: #111827;
+    padding: 0 18px;
+    font-weight: 800;
+}
+
+.send_btn:hover {
+    background: #ffb400;
+}
+
+/* User message */
+.msg_cotainer_send {
+    background: #2874F0;
+    color: white;
+    padding: 12px 14px;
+    border-radius: 16px;
+    max-width: 75%;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* Bot message */
+.msg_cotainer {
+    background: #0f172a;
+    color: rgba(255,255,255,0.92);
+    padding: 12px 14px;
+    border-radius: 16px;
+    max-width: 90%;
+    font-size: 14px;
+    line-height: 1.4;
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Message time */
+.msg_time, .msg_time_send {
+    font-size: 11px;
+    display: block;
+    margin-top: 6px;
+    opacity: 0.65;
+}
+
+/* Avatars */
+.user_img, .user_img_msg {
+    height: 45px;
+    width: 45px;
+    border: 2px solid rgba(255,255,255,0.6);
+}
+
+.img_cont {
+    position: relative;
+    height: 50px;
+    width: 50px;
+}
+
+.img_cont_msg {
+    height: 45px;
+    width: 45px;
+}
+
+.online_icon {
+    position: absolute;
+    height: 12px;
+    width: 12px;
+    background: #00e676;
+    border-radius: 50%;
+    bottom: 6px;
+    right: 6px;
+    border: 2px solid white;
+}
+
+/* ================= Flipkart Product Card ================= */
+
+.fk-card {
+    display: flex;
+    gap: 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 12px;
+    margin-top: 12px;
+    margin-bottom: 12px;
+    align-items: flex-start;
+}
+
+.fk-img {
+    width: 90px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: #0b1220;
+}
+
+.fk-info {
+    flex: 1;
+}
+
+.fk-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 4px;
+}
+
+.fk-meta {
+    font-size: 13px;
+    color: rgba(255,255,255,0.72);
+    margin-bottom: 3px;
+}
+
+.fk-price {
+    margin-top: 8px;
+    margin-bottom: 10px;
+}
+
+.fk-price-new {
+    font-size: 15px;
+    font-weight: 900;
+    color: white;
+    margin-right: 8px;
+}
+
+.fk-price-old {
+    font-size: 13px;
+    color: rgba(255,255,255,0.45);
+    text-decoration: line-through;
+}
+
+/* CTA button */
+.fk-btn {
+    display: inline-block;
+    padding: 8px 12px;
+    border-radius: 12px;
+    background: #ffc200;
+    color: #111827 !important;
+    font-weight: 900;
+    text-decoration: none !important;
+    font-size: 13px;
+}
+
+.fk-btn:hover {
+    background: #ffb400;
+}
+
+.msg_cotainer_send {
+    font-size: 12px;
+}
+
+.msg_cotainer {
+    font-size: 12px;
+}
+
+.fk-title {
+    font-size: 13px;
+}
+
+.fk-meta {
+    font-size: 12px;
+}
+
+.fk-btn {
+    font-size: 12px;
+}

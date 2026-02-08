@@ -212,7 +212,7 @@ else:
     df = df.drop_duplicates(subset=["product_url"])
 
 # Sample 25k
-df = df.sample(n=min(SAMPLE_SIZE, len(df)), random_state=SEED).reset_index(drop=True)
+df = df.reset_index(drop=True)
 
 print("Final rows:", len(df))
 
@@ -246,3 +246,7 @@ with open(OUTPUT_JSONL, "w", encoding="utf-8") as f:
 print("Saved:")
 print("-", OUTPUT_CSV)
 print("-", OUTPUT_JSONL)
+
+print("Total rows:", len(df))
+print("Rows with embedding_text >= 300:", (df["embedding_text"].str.len() >= 300).sum())
+print("Rows with embedding_text >= 200:", (df["embedding_text"].str.len() >= 200).sum())
