@@ -254,3 +254,42 @@ body, html {
 .fk-btn {
     font-size: 12px;
 }
+
+/* Force product image size inside cards */
+.fk-card .fk-img {
+    width: 70px !important;
+    height: 70px !important;
+    max-width: 70px !important;
+    max-height: 70px !important;
+    object-fit: cover !important;
+    flex-shrink: 0 !important;
+    display: block;
+}
+
+.fk-card {
+    align-items: center;
+}
+
+/* Limit any markdown images inside bot messages */
+/* .msg_cotainer img {
+    width: 90px !important;
+    height: 90px !important;
+    object-fit: cover !important;
+    border-radius: 14px;
+    display: block;
+    margin-top: 8px;
+} */
+
+/* Images that come from markdown inside bot messages */
+/* Limit images coming from markdown reply */
+.msg_cotainer > div img {
+    width: 110px !important;
+    height: 110px !important;
+    object-fit: cover !important;
+    border-radius: 14px;
+    display: block;
+    margin-top: 10px;
+}
+.msg_cotainer {
+    overflow-x: hidden;
+}

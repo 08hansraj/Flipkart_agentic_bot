@@ -1,4 +1,5 @@
 from tqdm import tqdm
+import os
 from langchain_astradb import AstraDBVectorStore
 from langchain_huggingface import HuggingFaceEmbeddings
 
@@ -6,8 +7,14 @@ from flipkart.data_converter import DataConverter
 from flipkart.config import Config
 
 
+
 class DataIngestor:
     def __init__(self):
+
+        # ✅ Ensure HF token is available for HuggingFace downloads
+        if getattr(Config, "HF_TOKEN", None):
+            os.environ["HF_TOKEN"] = Config.HF_TOKEN
+
         # Local embeddings (fast + free, but needs RAM/CPU)
         self.embedding = HuggingFaceEmbeddings(model_name=Config.EMBEDDING_MODEL)
 
@@ -21,15 +28,21 @@ class DataIngestor:
 
     def ingest(self, load_existing: bool = True):
         """
-        If load_existing=True, just returns the vector store.
-        If False, loads documents and ingests into AstraDB with stable IDs.
+        If load_existing=True:
+            returns the AstraDBVectorStore (NO ingestion).
+        If load_existing=False:
+            loads docs and ingests into AstraDB.
         """
 
         if load_existing:
             print("Loading existing vector store (no ingestion).")
             return self.vstore
+        
+        print("⚠️ INGESTION MODE: This will write new vectors into AstraDB.")
 
         print("Embedding model:", Config.EMBEDDING_MODEL)
+        print("Astra collection:", Config.ASTRA_DB_COLLECTION)
+        print("Astra namespace:", Config.ASTRA_DB_KEYSPACE)
 
         docs = DataConverter(Config.DATA_PATH).convert()
 
@@ -39,7 +52,7 @@ class DataIngestor:
         print("Total docs loaded:", len(docs))
         print("Sample doc metadata:", docs[0].metadata)
 
-        # ✅ Stable IDs (prevents duplicates forever)
+        # Stable IDs
         ids = []
         clean_docs = []
 
@@ -61,16 +74,12 @@ class DataIngestor:
 
         batch_size = 64
         for i in tqdm(range(0, len(clean_docs), batch_size), desc="Ingesting batches"):
-            batch = clean_docs[i : i + batch_size]
-            batch_ids = ids[i : i + batch_size]
+            batch = clean_docs[i: i + batch_size]
+            batch_ids = ids[i: i + batch_size]
 
-            # ✅ IMPORTANT: ids passed here prevents duplicates
+            # Insert into Astra
             self.vstore.add_documents(batch, ids=batch_ids)
 
         print("Ingestion finished!")
         return self.vstore
-
-
-if __name__ == "__main__":
-    ingestor = DataIngestor()
-    ingestor.ingest(load_existing=False)
+    

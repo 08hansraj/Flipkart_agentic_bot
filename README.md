@@ -9,7 +9,7 @@ A Flipkart-style product recommendation chatbot built using **RAG (Retrieval-Aug
 * **Flask** frontend + backend (local deployment)
 * **Prometheus + Grafana** monitoring setup
 
-The bot retrieves relevant Flipkart products from the vector database and shows results as clean product cards (image, rating, price, review snippet, and Flipkart link).
+The bot retrieves relevant Flipkart products from the vector database and displays them as clean product cards (image, price, rating, description, and Flipkart link).
 
 ---
 
@@ -29,8 +29,8 @@ FLIPKART_AGENT_CHATBOT/
 │   ├── __init__.py
 │   ├── config.py                   # Config + env variables
 │   ├── data_converter.py           # Converts dataset → LangChain Documents
-│   ├── data_ingestion.py           # Embedding + AstraDB ingestion
-│   └── rag_agent.py                # LangGraph agent + retriever tool
+│   ├── data_ingestion.py           # Embedding + AstraDB ingestion logic
+│   └── rag_agent.py                # LangGraph agent + retriever tool (JSON output)
 │
 ├── data/
 │   ├── raw/                        # Original dataset (optional)
@@ -44,38 +44,60 @@ FLIPKART_AGENT_CHATBOT/
 │       └── style.css               # UI styling + product cards
 │
 ├── scripts/
-│   └── prepare_flipkart_dataset.py # Script used to clean/prepare dataset
+│   ├── prepare_flipkart_dataset.py # Script used to clean/prepare dataset
+│   └── ingest_flipkart.py          # One-time ingestion runner
 │
 ├── prometheus/                     # Prometheus config (monitoring)
 ├── grafana/                        # Grafana dashboards (monitoring)
 │
-└── amznbot/                        # (Local venv folder name, not part of project code)
+└── amznbot/                        # Local venv folder name (not part of code)
 ```
 
-> Note: `amznbot` is the local virtual environment folder name (venv).
-> It is not part of the application logic.
+> Note: `amznbot` is only the local virtual environment folder name (venv).
 
 ---
 
 ## How It Works (Architecture)
 
-### 1) Data Ingestion (Offline)
+### 1) Data Ingestion (Offline / One-time)
 
 * The Flipkart dataset is converted into LangChain `Document` objects.
 * Each document contains:
 
-  * `page_content`: embedding text (product description + keywords)
+  * `page_content`: compact high-signal embedding text
   * `metadata`: product_name, brand, category_path, price, rating, url, image, etc.
 * HuggingFace embeddings are generated locally.
-* Embeddings are stored in **AstraDB Vector Store**.
+* Vectors are stored in **AstraDB Vector Store**.
+
+---
 
 ### 2) RAG Agent (Runtime)
 
-* User asks a question (example: *"best office chair under 5000"*).
-* LangGraph agent decides to call the retriever tool.
-* The retriever fetches top products from AstraDB using semantic search.
-* Tool returns formatted product cards.
-* The assistant responds with those cards in the UI.
+* User asks a question (example: **"men tshirt under 500"**).
+* LangGraph agent always calls the retriever tool for product intent.
+* Retriever performs **MMR semantic search** in AstraDB.
+* Results are lightly reranked for better stability.
+* Tool returns a structured JSON payload:
+
+```json
+{
+  "reply": "Here are the best matches I found:",
+  "products": [
+    {
+      "title": "...",
+      "brand": "...",
+      "discounted_price": 549,
+      "retail_price": 999,
+      "image": "http://...",
+      "url": "http://..."
+    }
+  ]
+}
+```
+
+* Flask frontend renders product cards using HTML + CSS.
+
+---
 
 ### 3) Memory
 
@@ -96,26 +118,6 @@ FLIPKART_AGENT_CHATBOT/
 
 ---
 
-## Dependencies
-
-This project uses the following key packages:
-
-* `langchain==1.2.1`
-* `langchain-astradb==1.0.0`
-* `langchain-huggingface==1.2.0`
-* `langchain-groq==1.1.1`
-* `langchain-community==0.4.1`
-* `datasets==4.4.2`
-* `pypdf==6.5.0`
-* `python-dotenv==1.2.1`
-* `pandas==2.3.3`
-* `flask==3.1.2`
-* `prometheus_client==0.23.1`
-* `setuptools==80.9.0`
-* `streamlit==1.52.2`
-
----
-
 ## Setup Instructions (Local)
 
 ### Requirements
@@ -123,16 +125,20 @@ This project uses the following key packages:
 * **Python 3.10**
 * **uv** (recommended) or pip
 
-### 1) Clone the repo
+---
+
+## 1) Clone the repo
 
 ```bash
 git clone https://github.com/08hansraj/Flipkart_agentic_bot.git
 cd Flipkart_agentic_bot
 ```
 
-### 2) Create a virtual environment
+---
 
-Your local venv name can be anything. Example:
+## 2) Create a virtual environment
+
+Example:
 
 ```bash
 python -m venv amznbot
@@ -140,13 +146,13 @@ python -m venv amznbot
 
 Activate:
 
-**Windows (PowerShell)**
+### Windows (PowerShell)
 
 ```bash
 amznbot\Scripts\activate
 ```
 
-**Mac/Linux**
+### Mac/Linux
 
 ```bash
 source amznbot/bin/activate
@@ -154,17 +160,15 @@ source amznbot/bin/activate
 
 ---
 
-## Install Dependencies (uv)
+## 3) Install dependencies
 
-This project can be installed using **uv**.
-
-### Option A: Install from requirements.txt
+### Using uv
 
 ```bash
 uv pip install -r requirements.txt
 ```
 
-### Option B: Normal pip
+### Using pip
 
 ```bash
 pip install -r requirements.txt
@@ -180,8 +184,11 @@ Create a `.env` file in the project root:
 # AstraDB
 ASTRA_DB_API_ENDPOINT=your_astra_endpoint
 ASTRA_DB_APPLICATION_TOKEN=your_astra_token
-ASTRA_DB_KEYSPACE=your_keyspace
-ASTRA_DB_COLLECTION=flipkart_database
+ASTRA_DB_KEYSPACE=default_keyspace
+ASTRA_DB_COLLECTION=flipkart_products_v2
+
+# HuggingFace
+HF_TOKEN=your_hf_token
 
 # Groq
 GROQ_API_KEY=your_groq_api_key
@@ -198,21 +205,21 @@ DATA_PATH=data/processed/flipkart_products_prepared_25k.jsonl
 
 ## Step 1: Ingest Data into AstraDB (One-time)
 
-⚠️ Important: If you accidentally ingest multiple times without stable IDs, you may get duplicates.
+⚠️ Important:
+Ingestion should be run **only once**.
+The project uses stable IDs (`metadata["id"]`) so duplicates do not occur.
 
-This project ingests with stable IDs (`metadata["id"]`) so duplicates do not happen after the fix.
-
-### Run ingestion
+Run ingestion:
 
 ```bash
-python -m flipkart.data_ingestion
+python scripts/ingest_flipkart.py
 ```
 
-You should see output like:
+You should see:
 
-* total docs loaded
-* ingestion batches progress
-* ingestion finished
+* Total docs loaded
+* Batch ingestion progress
+* Ingestion finished
 
 ---
 
@@ -224,7 +231,7 @@ Start the chatbot locally:
 python app.py
 ```
 
-Then open:
+Open in browser:
 
 ```
 http://localhost:5000
@@ -247,6 +254,16 @@ Payload:
 * `msg` (user message)
 * `thread_id` (stored in browser localStorage)
 
+Response:
+
+```json
+{
+  "reply": "...",
+  "products": [...],
+  "thread_id": "..."
+}
+```
+
 ### `GET /health`
 
 Health check endpoint.
@@ -261,52 +278,52 @@ Prometheus metrics endpoint.
 
 This repo includes Prometheus and Grafana folders.
 
-### Metrics exposed:
+Metrics exposed:
 
 * `http_requests_total`
 * `model_predictions_total`
 * `model_errors_total`
 
-Once deployed, Prometheus can scrape `/metrics` and Grafana can visualize it.
+Prometheus can scrape `/metrics` and Grafana can visualize it.
 
 ---
 
 ## Common Issues & Fixes
 
-### 1) Duplicates in AstraDB
+### 1) AstraDB record count keeps increasing
 
-If you see document count increasing unexpectedly (example: 19800 → 20400), it means ingestion ran multiple times.
+Cause: ingestion was run multiple times.
 
 Fix:
 
-* Delete AstraDB collection `flipkart_database`
-* Re-run ingestion using stable IDs
+* Use a new AstraDB collection (recommended):
+
+  * Example: `flipkart_products_v2`
+* Or delete the old collection and ingest once.
 
 ---
 
-### 2) AstraDB connection errors
+### 2) Groq 429 Rate Limit Errors
+
+Cause: too many tokens per minute.
+
+Fix:
+
+* This project uses JSON tool output (instead of HTML) to reduce tokens.
+* If you still hit limits, reduce:
+
+  * number of retrieved docs
+  * number of returned products
+
+---
+
+### 3) AstraDB connection errors
 
 Make sure:
 
 * ASTRA_DB_API_ENDPOINT is correct
 * ASTRA_DB_APPLICATION_TOKEN is valid
 * ASTRA_DB_KEYSPACE exists
-
----
-
-### 3) Groq model not responding
-
-Make sure:
-
-* GROQ_API_KEY is set correctly
-* `RAG_MODEL=groq:qwen/qwen3-32b`
-
----
-
-### 4) Slow ingestion
-
-HuggingFace embeddings run locally.
-If CPU is slow, ingestion will take time.
 
 ---
 
@@ -325,8 +342,9 @@ Next planned deployment:
 
 ## Future Improvements
 
-* Add reranking for better product quality
+* Add stronger reranking for better product quality
 * Add filters: budget, brand, rating, category
+* Add hybrid retrieval (BM25 + embeddings)
 * Store conversation memory in Redis/Postgres instead of InMemorySaver
 * Improve UI and mobile responsiveness
 * Add streaming responses (SSE)

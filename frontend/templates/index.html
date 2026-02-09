@@ -76,7 +76,6 @@ $(document).ready(function() {
             return crypto.randomUUID();
         }
 
-        // Fallback UUID generator
         return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
             const r = Math.random() * 16 | 0;
             const v = c === "x" ? r : (r & 0x3 | 0x8);
@@ -104,8 +103,65 @@ $(document).ready(function() {
         resetChat();
     });
 
-    // Ensure thread_id exists on page load
     getThreadId();
+
+    // ============ Product card renderer ============
+    function renderProductCards(products) {
+        if (!products || products.length === 0) {
+            return "";
+        }
+
+        let html = "";
+
+        products.forEach(p => {
+            const title = p.title || "Unknown Product";
+            const brand = p.brand || "N/A";
+            const url = p.url || "#";
+            const image = p.image || "";
+            const desc = p.description || "";
+
+            const discounted = (p.discounted_price !== null && p.discounted_price !== undefined)
+                ? `₹${p.discounted_price}`
+                : "N/A";
+
+            const retail = (p.retail_price !== null && p.retail_price !== undefined)
+                ? `₹${p.retail_price}`
+                : "";
+
+            const pr = (p.product_rating !== null && p.product_rating !== undefined)
+                ? p.product_rating
+                : "N/A";
+
+            const orr = (p.overall_rating !== null && p.overall_rating !== undefined)
+                ? p.overall_rating
+                : "N/A";
+
+            html += `
+<div class="fk-card">
+  <img class="fk-img" src="${image}" onerror="this.style.display='none'"/>
+  <div class="fk-info">
+    <div class="fk-title">${title}</div>
+
+    <div class="fk-meta"><b>Brand:</b> ${brand}</div>
+    <div class="fk-meta"><b>Product Rating:</b> ${pr}</div>
+    <div class="fk-meta"><b>Overall Rating:</b> ${orr}</div>
+
+    <div class="fk-price">
+      <span class="fk-price-new">${discounted}</span>
+      ${retail ? `<span class="fk-price-old">${retail}</span>` : ""}
+    </div>
+
+    ${desc ? `<div class="fk-meta"><b>Description:</b> ${desc}</div>` : ""}
+
+    <a class="fk-btn" href="${url}" target="_blank" rel="noopener noreferrer">
+      View on Flipkart
+    </a>
+  </div>
+</div>`;
+        });
+
+        return html;
+    }
 
     // ============ Chat submit ============
     $("#messageArea").on("submit", function(event) {
@@ -138,22 +194,23 @@ $(document).ready(function() {
             },
             type: "POST",
             url: "/get",
+            dataType: "json"
         }).done(function(data) {
 
-            // Your bot returns HTML cards sometimes.
-            // We sanitize the output so no script injection happens.
-            let formattedData = marked.parse(data);
+            // Update thread_id if backend sends it
+            if (data.thread_id) {
+                localStorage.setItem("thread_id", data.thread_id);
+            }
 
-            // Sanitize (allows your product card HTML safely)
-            formattedData = DOMPurify.sanitize(formattedData, {
-                ADD_ATTR: ["target", "rel", "onerror"],
-            });
+            const replyText = data.reply || "";
+            const products = data.products || [];
 
-            // Force ALL links to open in new tab
-            formattedData = formattedData.replaceAll(
-                "<a ",
-                "<a target='_blank' rel='noopener noreferrer' "
-            );
+            // Convert reply to markdown -> sanitize
+            let formattedReply = marked.parse(replyText);
+            formattedReply = DOMPurify.sanitize(formattedReply);
+
+            // Render product cards (already safe HTML from our own renderer)
+            let cardsHtml = renderProductCards(products);
 
             var botHtml = `
             <div class="d-flex justify-content-start mb-4">
@@ -162,7 +219,8 @@ $(document).ready(function() {
                         class="rounded-circle user_img_msg">
                 </div>
                 <div class="msg_cotainer">
-                    ${formattedData}
+                    <div>${formattedReply}</div>
+                    ${cardsHtml}
                     <span class="msg_time">${str_time}</span>
                 </div>
             </div>`;
@@ -171,6 +229,20 @@ $(document).ready(function() {
 
             // auto-scroll
             $("#messageFormeight").scrollTop($("#messageFormeight")[0].scrollHeight);
+        }).fail(function() {
+            var botHtml = `
+            <div class="d-flex justify-content-start mb-4">
+                <div class="img_cont_msg">
+                    <img src="https://static.vecteezy.com/system/resources/previews/016/017/018/non_2x/ecommerce-icon-free-png.png"
+                        class="rounded-circle user_img_msg">
+                </div>
+                <div class="msg_cotainer">
+                    Something went wrong. Please try again.
+                    <span class="msg_time">${str_time}</span>
+                </div>
+            </div>`;
+
+            $("#messageFormeight").append($.parseHTML(botHtml));
         });
 
     });

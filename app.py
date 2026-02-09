@@ -2,14 +2,13 @@ from flask import Flask, render_template, request, Response, jsonify
 from prometheus_client import Counter, generate_latest
 from dotenv import load_dotenv
 import uuid
+import json
 
 from flipkart.data_ingestion import DataIngestor
 from flipkart.rag_agent import RAGAgentBuilder
 
-# Load environment variables
 load_dotenv()
 
-# Prometheus metrics
 REQUEST_COUNT = Counter("http_requests_total", "Total HTTP Requests")
 PREDICTION_COUNT = Counter("model_predictions_total", "Total Model Predictions")
 ERROR_COUNT = Counter("model_errors_total", "Total Model Errors")
@@ -19,21 +18,25 @@ def create_app():
     app = Flask(
         __name__,
         template_folder="frontend/templates",
-        static_folder="frontend/static"
+        static_folder="frontend/static",
     )
 
-    # Load vector store (already ingested)
+    vector_store = None
+    rag_agent = None
+
     try:
+        print("🔹 Loading AstraDB vector store (no ingestion)...")
         vector_store = DataIngestor().ingest(load_existing=True)
+        print("✅ Vector store loaded.")
     except Exception as e:
         print("❌ Failed to load vector store:", str(e))
         vector_store = None
 
-    # Build RAG Agent
-    rag_agent = None
     if vector_store is not None:
         try:
+            print("🔹 Building RAG agent...")
             rag_agent = RAGAgentBuilder(vector_store).build_agent()
+            print("✅ RAG agent ready.")
         except Exception as e:
             print("❌ Failed to build RAG agent:", str(e))
             rag_agent = None
@@ -48,54 +51,43 @@ def create_app():
         REQUEST_COUNT.inc()
 
         if rag_agent is None:
-            return "Bot is not ready. Please check server logs and AstraDB connection."
+            return jsonify({"reply": "Bot is not ready. Check server logs.", "products": []}), 500
 
         user_input = request.form.get("msg", "").strip()
         thread_id = request.form.get("thread_id", "").strip()
 
         if not user_input:
-            return "Please type something."
+            return jsonify({"reply": "Please type something.", "products": []})
 
-        # ✅ Generate a thread_id if missing (prevents shared memory across users)
         if not thread_id:
             thread_id = str(uuid.uuid4())
 
         try:
             response = rag_agent.invoke(
-                {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": user_input
-                        }
-                    ]
-                },
-                config={
-                    "configurable": {
-                        "thread_id": thread_id
-                    }
-                }
+                {"messages": [{"role": "user", "content": user_input}]},
+                config={"configurable": {"thread_id": thread_id}},
             )
 
             PREDICTION_COUNT.inc()
 
             if not response.get("messages"):
-                return "Sorry, I couldn't find relevant product information."
+                return jsonify({"reply": "Sorry, no response generated.", "products": []})
 
             final_msg = response["messages"][-1]
-            final_text = getattr(final_msg, "content", None)
+            final_text = getattr(final_msg, "content", "")
 
-            if not final_text:
-                return "Sorry, I couldn't generate a valid response."
+            try:
+                payload = json.loads(final_text)
+            except Exception:
+                payload = {"reply": final_text, "products": []}
 
-            # Optional: attach thread_id so frontend can store it
-            # But your frontend likely already stores it in localStorage.
-            return final_text
+            payload["thread_id"] = thread_id
+            return jsonify(payload)
 
         except Exception as e:
             ERROR_COUNT.inc()
             print("❌ Agent invoke error:", str(e))
-            return "Something went wrong while generating the response. Please try again."
+            return jsonify({"reply": "Something went wrong. Please try again.", "products": []}), 500
 
     @app.route("/health")
     def health():
@@ -112,4 +104,4 @@ def create_app():
 
 if __name__ == "__main__":
     app = create_app()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)
